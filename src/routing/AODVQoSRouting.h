@@ -139,6 +139,8 @@ class AODVQoSRouting : public cSimpleModule, public ILifecycle, public INetfilte
         // internal
         std::multimap<L3Address, INetworkDatagram *> targetAddressToDelayedPackets; // queue for the datagrams we have no route for
 
+        /*QoS Params*/
+        int recordTime;
         typedef std::pair<L3Address, L3Address> Path;
 
         struct TransmissionOverHead
@@ -195,8 +197,8 @@ class AODVQoSRouting : public cSimpleModule, public ILifecycle, public INetfilte
 
         /*QoSRouting*/
         void recordUtilization(int packetSize, Path path = Path(IPv4Address().UNSPECIFIED_ADDRESS, IPv4Address().UNSPECIFIED_ADDRESS));
-        void defineBandwidthOverhead(std::vector<TransmissionOverHead>& transmissionOverhead, double timeSpan);
-        void defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocation>&transmissionRadioLoad, double timeSpan);
+        void defineBandwidthOverhead(std::vector<TransmissionOverHead>& transmissionOverhead);
+        void defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocation>&transmissionRadioLoad);
         double* determineUtilization();
         double determineQoSRREQTreatment(double* transmissionPossibilities, double requiredBandwidth, double requiredSlotTime);
         /* Control packet creators */

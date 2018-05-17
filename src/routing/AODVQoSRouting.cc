@@ -103,6 +103,7 @@ void AODVQoSRouting::initialize(int stage)
         IPSocket socket(gate("ipOut"));
         socket.registerProtocol(IP_PROT_MANET);
         networkProtocol->registerHook(0, this);
+        recordTime = par("recordTime");
         host->subscribe(NF_LINK_BREAK, this);
         host->subscribe(IRadio::receptionStateChangedSignal,this);
         host->subscribe(IRadio::transmissionStateChangedSignal,this);
@@ -205,47 +206,49 @@ double AODVQoSRouting::determineQoSRREQTreatment(double* transmissionPossibiliti
     RREQTreatment slotTimeTreatment = RREQTreatment::UNKNOWN;
 
     double availableBandwidth = transmissionPossibilities[0];
-    double availableSlotTime = transmissionPossibilities[1];
+    int sharedMedium = transmissionPossibilities[1];
+    double availableSlotTime = transmissionPossibilities[2];
 
-    if (availableBandwidth - requiredBandwidth < 100)
-    {
-        bandwidthTreatment = RREQTreatment::DELETE;
-    }
-    else if (availableBandwidth - requiredBandwidth > 500)
-    {
-        bandwidthTreatment = RREQTreatment::FORWARD;
-    }
-    else
-    {
-        bandwidthTreatment = RREQTreatment::DELAY;
-    }
-
-    if (availableSlotTime - requiredSlotTime < 100)
-    {
-        slotTimeTreatment = RREQTreatment::DELETE;
-    }
-    else if (availableSlotTime - requiredSlotTime > 500)
-    {
-        slotTimeTreatment = RREQTreatment::FORWARD;
-    }
-    else
-    {
-        slotTimeTreatment = RREQTreatment::DELAY;
-    }
-
-    std::pair<RREQTreatment, simtime_t> treatment;
-    if (slotTimeTreatment == RREQTreatment::DELETE || bandwidthTreatment == RREQTreatment::DELETE)
+    double possibleBandwidth = (2000000 / sharedMedium / 8);
+    std::cout << host->getFullName() << ". Available bandwidth: " << (1 / possibleBandwidth * (possibleBandwidth - availableBandwidth)) << endl;
+    if (1 / possibleBandwidth * (possibleBandwidth - availableBandwidth) < 0.7)
     {
         return -1;
     }
-    else if (slotTimeTreatment == RREQTreatment::DELAY || bandwidthTreatment == RREQTreatment::DELAY)
+    else
     {
         return 0;
     }
-    else
-    {
-        return 0.5;
-    }
+//    else
+//    {
+//        bandwidthTreatment = RREQTreatment::DELAY;
+//    }
+//
+//    if (availableSlotTime - requiredSlotTime < 100)
+//    {
+//        slotTimeTreatment = RREQTreatment::DELETE;
+//    }
+//    else if (availableSlotTime - requiredSlotTime > 500)
+//    {
+//        slotTimeTreatment = RREQTreatment::FORWARD;
+//    }
+//    else
+//    {
+//        slotTimeTreatment = RREQTreatment::DELAY;
+//    }
+//
+//    if (slotTimeTreatment == RREQTreatment::DELETE || bandwidthTreatment == RREQTreatment::DELETE)
+//    {
+//        return -1;
+//    }
+//    else if (slotTimeTreatment == RREQTreatment::DELAY || bandwidthTreatment == RREQTreatment::DELAY)
+//    {
+//        return 0.05;
+//    }
+//    else
+//    {
+//        return 0.0;
+//    }
 }
 
 double* AODVQoSRouting::determineUtilization()
@@ -255,7 +258,7 @@ double* AODVQoSRouting::determineUtilization()
     double overheadByte = 0;
     for (std::map<Path, std::vector<TransmissionOverHead>>::iterator transmission = currentTransmissions.begin(); transmission != currentTransmissions.end(); transmission++)
     {
-        defineBandwidthOverhead(transmission->second, 1);
+        defineBandwidthOverhead(transmission->second);
         if (transmission->first.first != IPv4Address().UNSPECIFIED_ADDRESS && transmission->first.second != IPv4Address().UNSPECIFIED_ADDRESS)
         {
 
@@ -273,12 +276,13 @@ double* AODVQoSRouting::determineUtilization()
 
     }
 
-    utilization[0] = (2000000 / 8) / (numOfActiveTransmissionNeighbors + 1) - overheadByte;
+    utilization[0] = overheadByte;
+    utilization[1] = numOfActiveTransmissionNeighbors + 1;
 
     double busyTime = 0;
     for (std::map<RadioBehavior, std::vector<TransmissionTimeAllocation>>::iterator radioBehavior = radioBehaviorTimeAllocation.begin(); radioBehavior != radioBehaviorTimeAllocation.end(); radioBehavior++)
     {
-        defineRadioBehaviorLoad(radioBehavior->second, 1);
+        defineRadioBehaviorLoad(radioBehavior->second);
 
         if (radioBehavior->first == RadioBehavior::BUSY)
         {
@@ -288,10 +292,11 @@ double* AODVQoSRouting::determineUtilization()
             }
         }
     }
-    utilization[1] = (1000 - busyTime);
+    utilization[2] = (1000.0 - busyTime);
 
     return utilization;
 }
+
 void AODVQoSRouting::recordUtilization(int packetSize, Path path)
 {
     std::map<Path, std::vector<TransmissionOverHead>>::iterator it = currentTransmissions.find(path);
@@ -300,7 +305,7 @@ void AODVQoSRouting::recordUtilization(int packetSize, Path path)
     if (it != currentTransmissions.end())
     {
         it->second.push_back(overhead);
-        defineBandwidthOverhead(it->second, 1);
+        defineBandwidthOverhead(it->second);
     }
     else
     {
@@ -311,13 +316,13 @@ void AODVQoSRouting::recordUtilization(int packetSize, Path path)
 
 }
 
-void AODVQoSRouting::defineBandwidthOverhead(std::vector<TransmissionOverHead>& transmissionOverhead, double timeSpan)
+void AODVQoSRouting::defineBandwidthOverhead(std::vector<TransmissionOverHead>& transmissionOverhead)
 {
     std::vector<TransmissionOverHead>::iterator it = transmissionOverhead.begin();
 
     while (it != transmissionOverhead.end())
     {
-        if ((simTime() - it->recordTime).dbl() > timeSpan)
+        if ((simTime() - it->recordTime).dbl() > recordTime)
         {
             transmissionOverhead.erase(it);
         }
@@ -328,13 +333,13 @@ void AODVQoSRouting::defineBandwidthOverhead(std::vector<TransmissionOverHead>& 
     }
 }
 
-void AODVQoSRouting::defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocation>& transmissionRadioLoad, double timeSpan)
+void AODVQoSRouting::defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocation>& transmissionRadioLoad)
 {
     std::vector<TransmissionTimeAllocation>::iterator it = transmissionRadioLoad.begin();
 
     while (it != transmissionRadioLoad.end())
     {
-        if ((simTime() - it->time).dbl() > timeSpan)
+        if ((simTime() - it->time).dbl() > recordTime)
         {
             transmissionRadioLoad.erase(it);
         }
@@ -350,7 +355,7 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
     Enter_Method("datagramPreRoutingHook");
     const L3Address& destAddr = datagram->getDestinationAddress();
     const L3Address& sourceAddr = datagram->getSourceAddress();
-
+    std::cout << host->getFullName() << endl;
     IPv4Datagram* header = dynamic_cast<IPv4Datagram*>(datagram);
 
     if(header->getTransportProtocol() == IP_PROT_MANET)
@@ -1101,7 +1106,7 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
     double* utilization = determineUtilization();
     double result = determineQoSRREQTreatment(utilization, rreq->getMinAvailableBandwidth(), rreq->getMinAvailableSlotTime());
 
-    if (result == -1)
+    if (result == -1 && !routingTable->isLocalAddress(rreq->getDestAddr()))
     {
         delete rreq;
         return;
@@ -1300,7 +1305,7 @@ void AODVQoSRouting::receiveSignal(cComponent *source, simsignal_t signalID, lon
         tmpTimeAllocation->second.push_back(currentTimeAllocation);
     }
     std::cout << tmpTimeAllocation->second.size() << endl;
-    defineRadioBehaviorLoad(tmpTimeAllocation->second, 1);
+    defineRadioBehaviorLoad(tmpTimeAllocation->second);
     std::cout << tmpTimeAllocation->second.size() << endl;
     oldTimeAllocation.time = simTime();
     oldTimeAllocation.behavior = behavior;

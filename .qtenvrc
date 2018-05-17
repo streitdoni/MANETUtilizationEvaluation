@@ -1,3 +1,11 @@
 [General]
 last-configname=General
 last-runnumber=0
+
+[Inspector-0]
+classname=omnetpp::cEventHeap
+fullscreen=false
+geom=@Rect(282 57 400 300)
+id=@Variant(\0\0\0\x81\xff\xff\xff\xff\xff\xff\xff\xff)
+object=simulation.scheduled-events
+type=1
