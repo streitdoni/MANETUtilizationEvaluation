@@ -199,6 +199,50 @@ void AODVQoSRouting::handleMessage(cMessage *msg)
     }
 }
 
+double* AODVQoSRouting::determineUtilization()
+{
+    static double utilization[2];
+    int numOfActiveTransmissionNeighbors = 0;
+    double overheadByte = 0;
+    for (std::map<Path, std::vector<TransmissionOverHead>>::iterator transmission = currentTransmissions.begin(); transmission != currentTransmissions.end(); transmission++)
+    {
+        defineBandwidthOverhead(transmission->second, 1);
+        if (transmission->first.first != IPv4Address().UNSPECIFIED_ADDRESS && transmission->first.second != IPv4Address().UNSPECIFIED_ADDRESS)
+        {
+
+            if (transmission->first.first != getSelfIPAddress() && transmission->first.second != getSelfIPAddress())
+            {
+                numOfActiveTransmissionNeighbors++;
+            }
+            numOfActiveTransmissionNeighbors++;
+        }
+
+        for (std::vector<TransmissionOverHead>::iterator overhead = transmission->second.begin(); overhead != transmission->second.end(); overhead++)
+        {
+            overheadByte += overhead->byte;
+        }
+
+    }
+
+    utilization[0] = (2000000 / 8) / (numOfActiveTransmissionNeighbors + 1) - overheadByte;
+
+    double busyTime = 0;
+    for (std::map<RadioBehavior, std::vector<TransmissionTimeAllocation>>::iterator radioBehavior = radioBehaviorTimeAllocation.begin(); radioBehavior != radioBehaviorTimeAllocation.end(); radioBehavior++)
+    {
+        defineRadioBehaviorLoad(radioBehavior->second, 1);
+
+        if (radioBehavior->first == RadioBehavior::BUSY)
+        {
+            for (std::vector<TransmissionTimeAllocation>::iterator timeAllocation = radioBehavior->second.begin(); timeAllocation != radioBehavior->second.end(); timeAllocation++)
+            {
+                busyTime += timeAllocation->busyTime;
+            }
+        }
+    }
+    utilization[1] = 1 - busyTime;
+
+    return utilization;
+}
 void AODVQoSRouting::recordUtilization(int packetSize, Path path)
 {
     std::map<Path, std::vector<TransmissionOverHead>>::iterator it = currentTransmissions.find(path);
@@ -252,7 +296,7 @@ void AODVQoSRouting::defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocat
     }
 }
 
-INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagram *datagram)
+INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagram * datagram)
 {
     Enter_Method("datagramPreRoutingHook");
     const L3Address& destAddr = datagram->getDestinationAddress();
@@ -293,10 +337,12 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
         if (isActive && !route->getNextHopAsGeneric().isUnspecified())
         {
 
-            if(header->getTransportProtocol()==IP_PROT_UDP && sourceAddr.isUnspecified())
-            {
-                startQoSRouteDiscovery(destAddr,dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime(), route->getMetric());
-            }
+            /*NEXT STEP*/
+            /*Node starts another flow*/
+            // if(header->getTransportProtocol()==IP_PROT_UDP && sourceAddr.isUnspecified())
+            // {
+            //  startQoSRouteDiscovery(destAddr,dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime(), route->getMetric());
+            // }
             EV_INFO << "Active route found: " << route << endl;
 
             // Each time a route is used to forward a data packet, its Active Route
@@ -628,7 +674,7 @@ AODVQoSRREP *AODVQoSRouting::createRREP(AODVQoSRREQ *rreq, IRoute *destRoute, IR
     return rrep;
 }
 
-AODVQoSRREP *AODVQoSRouting::createGratuitousRREP(AODVQoSRREQ *rreq, IRoute *originatorRoute)
+AODVQoSRREP * AODVQoSRouting::createGratuitousRREP(AODVQoSRREQ * rreq, IRoute * originatorRoute)
 {
     ASSERT(originatorRoute != nullptr);
     AODVQoSRREP *grrep = new AODVQoSRREP("AODV-GRREP");
@@ -1000,7 +1046,10 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
             updateRoutingTable(reverseRoute, sourceAddr, hopCount, true, newSeqNum, true, newLifeTime);
         }
     }
-
+    /****************************************************/
+    /******************QoS-Extended**********************/
+    /****************************************************/
+    double* utilization = determineUtilization();
     // A node generates a RREP if either:
     //
     // (i)       it is itself the destination, or
@@ -1011,12 +1060,10 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
     //           the Destination Sequence Number of the RREQ (comparison
     //           using signed 32-bit arithmetic), and the "destination only"
     //           ('D') flag is NOT set.
-
     // After a node receives a RREQ and responds with a RREP, it discards
     // the RREQ.  If the RREQ has the 'G' flag set, and the intermediate
     // node returns a RREP to the originating node, it MUST also unicast a
     // gratuitous RREP to the destination node.
-
     IRoute *destRoute = routingTable->findBestMatchingRoute(rreq->getDestAddr());
     AODVQoSRouteData *destRouteData = destRoute ? dynamic_cast<AODVQoSRouteData *>(destRoute->getProtocolData()) :
     nullptr;
@@ -1033,7 +1080,7 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
         sendRREP(rrep, rreq->getOriginatorAddr(), 255);
 
         delete rreq;
-        return;    // discard RREQ, in this case, we do not forward it.
+        return;        // discard RREQ, in this case, we do not forward it.
     }
 
     // check (ii)
@@ -1118,7 +1165,7 @@ IRoute *AODVQoSRouting::createRoute(const L3Address& destAddr, const L3Address& 
     newProtocolData->setLifeTime(lifeTime);
     newProtocolData->setDestSeqNum(destSeqNum);
 
-    InterfaceEntry *ifEntry = interfaceTable->getInterfaceByName("wlan0"); // TODO: IMPLEMENT: multiple interfaces
+    InterfaceEntry *ifEntry = interfaceTable->getInterfaceByName("wlan0");        // TODO: IMPLEMENT: multiple interfaces
     if (ifEntry)
         newRoute->setInterface(ifEntry);
 
@@ -1128,7 +1175,7 @@ IRoute *AODVQoSRouting::createRoute(const L3Address& destAddr, const L3Address& 
     newRoute->setProtocolData(newProtocolData);
     newRoute->setMetric(hopCount);
     newRoute->setNextHop(nextHop);
-    newRoute->setPrefixLength(addressType->getMaxPrefixLength());    // TODO:
+    newRoute->setPrefixLength(addressType->getMaxPrefixLength());        // TODO:
 
     EV_DETAIL << "Adding new route " << newRoute << endl;
     routingTable->addRoute(newRoute);
@@ -1405,7 +1452,7 @@ void AODVQoSRouting::handleRERR(AODVQoSRERR *rerr, const L3Address& sourceAddr)
                     // ! and copied from the incoming RERR in case (iii) above.
 
                     routeData->setDestSeqNum(rerr->getUnreachableNodes(j).seqNum);
-                    routeData->setIsActive(false); // it means invalid, see 3. AODV Terminology p.3. in RFC 3561
+                    routeData->setIsActive(false);                        // it means invalid, see 3. AODV Terminology p.3. in RFC 3561
                     routeData->setLifeTime(simTime() + deletePeriod);
 
                     // The RERR should contain those destinations that are part of
@@ -1521,11 +1568,11 @@ void AODVQoSRouting::handleWaitForQoSRREP(WaitForQoSRREP *rrepTimer)
         return;
     }
 
-    AODVQoSRREQ *rreq = createRREQ(destAddr,rrepTimer->getMinAvailableBandwidth(),rrepTimer->getMinAvailableSlotTime());
+    AODVQoSRREQ *rreq = createRREQ(destAddr, rrepTimer->getMinAvailableBandwidth(), rrepTimer->getMinAvailableSlotTime());
 
     // the node MAY try again to discover a route by broadcasting another
     // RREQ, up to a maximum of RREQ_RETRIES times at the maximum TTL value.
-    if (rrepTimer->getLastTTL() == netDiameter) // netDiameter is the maximum TTL value
+    if (rrepTimer->getLastTTL() == netDiameter)        // netDiameter is the maximum TTL value
         addressToRreqRetries[destAddr]++;
 
     sendRREQ(rreq, addressType->getBroadcastAddress(), 0);
@@ -1940,7 +1987,7 @@ void AODVQoSRouting::handleRREPACKTimer()
 
     EV_INFO << "RREP-ACK didn't arrived within timeout. Adding " << failedNextHop << " to the blacklist" << endl;
 
-    blacklist[failedNextHop] = simTime() + blacklistTimeout;    // lifetime
+    blacklist[failedNextHop] = simTime() + blacklistTimeout;        // lifetime
 
     if (!blacklistTimer->isScheduled())
         scheduleAt(simTime() + blacklistTimeout, blacklistTimer);

@@ -23,52 +23,106 @@
 #include "inet/networklayer/common/L3Address.h"
 #include "inet/common/INETDefs.h"
 
-namespace inet {
-
-    class INET_API AODVQoSRouteData : public cObject
+namespace inet
 {
-  protected:
-    std::set<L3Address> precursorList;
-    bool active;
-    bool repariable;
-    bool beingRepaired;
-    bool validDestNum;
-    unsigned int destSeqNum;
-    simtime_t lifeTime;    // expiration or deletion time of the route
 
-  public:
+class INET_API AODVQoSRouteData : public cObject
+{
+    protected:
+        std::set<L3Address> precursorList;
+        bool active;
+        bool repariable;
+        bool beingRepaired;
+        bool validDestNum;
+        unsigned int destSeqNum;
+        simtime_t lifeTime;    // expiration or deletion time of the route
+        int pathId;
 
-            AODVQoSRouteData()
-    {
-        active = true;
-        repariable = false;
-        beingRepaired = false;
-        validDestNum = true;
-        lifeTime = SIMTIME_ZERO;
-        destSeqNum = 0;
-    }
+    public:
 
-            virtual ~AODVQoSRouteData()
-            {
-            }
+        AODVQoSRouteData()
+        {
+            active = true;
+            repariable = false;
+            beingRepaired = false;
+            validDestNum = true;
+            lifeTime = SIMTIME_ZERO;
+            destSeqNum = 0;
+        }
 
-    unsigned int getDestSeqNum() const { return destSeqNum; }
-    void setDestSeqNum(unsigned int destSeqNum) { this->destSeqNum = destSeqNum; }
-    bool hasValidDestNum() const { return validDestNum; }
-    void setHasValidDestNum(bool hasValidDestNum) { this->validDestNum = hasValidDestNum; }
-    bool isBeingRepaired() const { return beingRepaired; }
-    void setIsBeingRepaired(bool isBeingRepaired) { this->beingRepaired = isBeingRepaired; }
-    bool isRepariable() const { return repariable; }
-    void setIsRepariable(bool isRepariable) { this->repariable = isRepariable; }
-    const simtime_t& getLifeTime() const { return lifeTime; }
-    void setLifeTime(const simtime_t& lifeTime) { this->lifeTime = lifeTime; }
-    bool isActive() const { return active; }
-    void setIsActive(bool active) { this->active = active; }
-    void addPrecursor(const L3Address& precursorAddr) { precursorList.insert(precursorAddr); }
-    const std::set<L3Address>& getPrecursorList() const { return precursorList; }
+        virtual ~AODVQoSRouteData()
+        {
+        }
+
+        unsigned int getDestSeqNum() const
+        {
+            return destSeqNum;
+        }
+        void setDestSeqNum(unsigned int destSeqNum)
+        {
+            this->destSeqNum = destSeqNum;
+        }
+        bool hasValidDestNum() const
+        {
+            return validDestNum;
+        }
+        void setHasValidDestNum(bool hasValidDestNum)
+        {
+            this->validDestNum = hasValidDestNum;
+        }
+        bool isBeingRepaired() const
+        {
+            return beingRepaired;
+        }
+        void setIsBeingRepaired(bool isBeingRepaired)
+        {
+            this->beingRepaired = isBeingRepaired;
+        }
+        bool isRepariable() const
+        {
+            return repariable;
+        }
+        void setIsRepariable(bool isRepariable)
+        {
+            this->repariable = isRepariable;
+        }
+        const simtime_t& getLifeTime() const
+        {
+            return lifeTime;
+        }
+        void setLifeTime(const simtime_t& lifeTime)
+        {
+            this->lifeTime = lifeTime;
+        }
+        bool isActive() const
+        {
+            return active;
+        }
+        void setIsActive(bool active)
+        {
+            this->active = active;
+        }
+        void addPrecursor(const L3Address& precursorAddr)
+        {
+            precursorList.insert(precursorAddr);
+        }
+        const std::set<L3Address>& getPrecursorList() const
+        {
+            return precursorList;
+        }
+
+        int getPathId() const
+        {
+            return pathId;
+        }
+
+        void setPathId(int pathId)
+        {
+            this->pathId = pathId;
+        }
 };
 
-    std::ostream& operator<<(std::ostream& out, const AODVQoSRouteData *data);
+std::ostream& operator<<(std::ostream& out, const AODVQoSRouteData *data);
 
 } // namespace inet
 

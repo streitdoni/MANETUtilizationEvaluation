@@ -23,6 +23,7 @@ import inet.networklayer.ipv4.RoutingTableRecorder;
 import inet.physicallayer.idealradio.IdealRadioMedium;
 import inet.visualizer.integrated.IntegratedVisualizer;
 import src.node.AODVQoSRouter;
+import inet.node.aodv.AODVRouter;
 //import inet.physicallayer.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
 //import inet.common.misc.ThruputMeteringChannel;
 
@@ -61,7 +62,7 @@ network Network
                 script = default(xml("<scenario/>"));
                 @display("p=50,250");
         }
-        host[numHosts]: AODVQoSRouter {
+        host[numHosts]: AODVRouter {
             parameters:
                 @display("p=100,100;r=,,#000040");
         }

@@ -165,7 +165,7 @@ class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public 
 
         std::map<RadioBehavior, std::vector<TransmissionTimeAllocation>> radioBehaviorTimeAllocation;
         std::map<Path, std::vector<TransmissionOverHead>> currentTransmissions;
-        QoSRequirementsMapping* qosRequirements;
+        QoSRequirementsMapping* qosRequirements = nullptr;
 
     protected:
         void handleMessage(cMessage *msg) override;
@@ -192,6 +192,7 @@ class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public 
         void recordUtilization(int packetSize, Path path = Path(IPv4Address().UNSPECIFIED_ADDRESS, IPv4Address().UNSPECIFIED_ADDRESS));
         void defineBandwidthOverhead(std::vector<TransmissionOverHead>& transmissionOverhead, double timeSpan);
         void defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocation>&transmissionRadioLoad, double timeSpan);
+        double* determineUtilization();
         /* Control packet creators */
         AODVQoSRREPACK *createRREPACK();
         AODVQoSRREP *createHelloMessage();

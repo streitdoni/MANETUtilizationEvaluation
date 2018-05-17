@@ -71,6 +71,7 @@ out/gcc-debug//src/routing/AODVQoSRouting.o: \
  /home/klement/Git/inetmanet-3.x/src/inet/physicallayer/contract/packetlevel/IModulation.h \
  /home/klement/Git/inetmanet-3.x/src/inet/physicallayer/contract/packetlevel/ISNIR.h \
  /home/klement/Git/inetmanet-3.x/src/inet/physicallayer/contract/packetlevel/ITransmitter.h \
+ src/routing/QoSRequirementsMapping.h \
  /home/klement/Git/inetmanet-3.x/src/inet/networklayer/ipv4/ICMPMessage.h \
  /home/klement/Git/inetmanet-3.x/src/inet/networklayer/ipv4/ICMPMessage_m.h \
  /home/klement/Git/inetmanet-3.x/src/inet/networklayer/ipv4/IPv4Route.h \
@@ -233,6 +234,8 @@ src/routing/AODVQoSControlPackets_m.h:
 /home/klement/Git/inetmanet-3.x/src/inet/physicallayer/contract/packetlevel/ISNIR.h:
 
 /home/klement/Git/inetmanet-3.x/src/inet/physicallayer/contract/packetlevel/ITransmitter.h:
+
+src/routing/QoSRequirementsMapping.h:
 
 /home/klement/Git/inetmanet-3.x/src/inet/networklayer/ipv4/ICMPMessage.h:
 
