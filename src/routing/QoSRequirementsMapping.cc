@@ -18,12 +18,11 @@
 QoSRequirementsMapping::QoSRequirementsMapping()
 {
     requirements = new QoSRequirementsMapping::QoSRequirelemts();
-
 }
 
 QoSRequirementsMapping::~QoSRequirementsMapping()
 {
-    // TODO Auto-generated destructor stub
+    delete requirements;
 }
 
 QoSRequirementsMapping::QoSRequirelemts* QoSRequirementsMapping::determineQoSRequirements(int tos)

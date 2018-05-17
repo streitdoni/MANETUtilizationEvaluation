@@ -18,7 +18,7 @@
 
 class QoSRequirementsMapping
 {
-    private:
+    public:
         class QoSRequirelemts
         {
             public:
@@ -27,24 +27,22 @@ class QoSRequirementsMapping
                     return maxDelay;
                 }
 
-                void setMaxDelay(double maxDelay)
-                {
-                    this->maxDelay = maxDelay;
-                }
-
                 double getMinBandwidth() const
                 {
                     return minBandwidth;
                 }
 
-                void setMinBandwidth(double minBandwidth)
-                {
-                    this->minBandwidth = minBandwidth;
-                }
-
                 double getMinSlotTime() const
                 {
                     return minSlotTime;
+                }
+                void setMaxDelay(double maxDelay)
+                {
+                    this->maxDelay = maxDelay;
+                }
+                void setMinBandwidth(double minBandwidth)
+                {
+                    this->minBandwidth = minBandwidth;
                 }
 
                 void setMinSlotTime(double minSlotTime)
@@ -63,8 +61,6 @@ class QoSRequirementsMapping
     public:
         QoSRequirementsMapping();
         virtual ~QoSRequirementsMapping();
-
-    protected:
         QoSRequirelemts* determineQoSRequirements(int tos);
 };
 

@@ -367,49 +367,57 @@ inline void doParsimUnpacking(omnetpp::cCommBuffer *b, AODVQoSRREPACK& obj) {obj
  * //
  * // Represents a timer for a Route Reply packet
  * //
- * message WaitForRREP
+ * message WaitForQoSRREP
  * {
  *     L3Address destAddr;
  *     unsigned int lastTTL;
  *     bool fromInvalidEntry;
+ *     double minAvailableBandwidth;
+ *     double minAvailableSlotTime;
  * }
  * </pre>
  */
-class WaitForRREP : public ::omnetpp::cMessage
+class WaitForQoSRREP : public ::omnetpp::cMessage
 {
   protected:
     L3Address destAddr;
     unsigned int lastTTL;
     bool fromInvalidEntry;
+    double minAvailableBandwidth;
+    double minAvailableSlotTime;
 
   private:
-    void copy(const WaitForRREP& other);
+    void copy(const WaitForQoSRREP& other);
 
   protected:
     // protected and unimplemented operator==(), to prevent accidental usage
-    bool operator==(const WaitForRREP&);
+    bool operator==(const WaitForQoSRREP&);
 
   public:
-    WaitForRREP(const char *name=nullptr, short kind=0);
-    WaitForRREP(const WaitForRREP& other);
-    virtual ~WaitForRREP();
-    WaitForRREP& operator=(const WaitForRREP& other);
-    virtual WaitForRREP *dup() const override {return new WaitForRREP(*this);}
+    WaitForQoSRREP(const char *name=nullptr, short kind=0);
+    WaitForQoSRREP(const WaitForQoSRREP& other);
+    virtual ~WaitForQoSRREP();
+    WaitForQoSRREP& operator=(const WaitForQoSRREP& other);
+    virtual WaitForQoSRREP *dup() const override {return new WaitForQoSRREP(*this);}
     virtual void parsimPack(omnetpp::cCommBuffer *b) const override;
     virtual void parsimUnpack(omnetpp::cCommBuffer *b) override;
 
     // field getter/setter methods
     virtual L3Address& getDestAddr();
-    virtual const L3Address& getDestAddr() const {return const_cast<WaitForRREP*>(this)->getDestAddr();}
+    virtual const L3Address& getDestAddr() const {return const_cast<WaitForQoSRREP*>(this)->getDestAddr();}
     virtual void setDestAddr(const L3Address& destAddr);
     virtual unsigned int getLastTTL() const;
     virtual void setLastTTL(unsigned int lastTTL);
     virtual bool getFromInvalidEntry() const;
     virtual void setFromInvalidEntry(bool fromInvalidEntry);
+    virtual double getMinAvailableBandwidth() const;
+    virtual void setMinAvailableBandwidth(double minAvailableBandwidth);
+    virtual double getMinAvailableSlotTime() const;
+    virtual void setMinAvailableSlotTime(double minAvailableSlotTime);
 };
 
-inline void doParsimPacking(omnetpp::cCommBuffer *b, const WaitForRREP& obj) {obj.parsimPack(b);}
-inline void doParsimUnpacking(omnetpp::cCommBuffer *b, WaitForRREP& obj) {obj.parsimUnpack(b);}
+inline void doParsimPacking(omnetpp::cCommBuffer *b, const WaitForQoSRREP& obj) {obj.parsimPack(b);}
+inline void doParsimUnpacking(omnetpp::cCommBuffer *b, WaitForQoSRREP& obj) {obj.parsimUnpack(b);}
 
 } // namespace inet
 

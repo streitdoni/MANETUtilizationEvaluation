@@ -143,8 +143,8 @@ void AODVQoSRouting::handleMessage(cMessage *msg)
 
     if (msg->isSelfMessage())
     {
-        if (dynamic_cast<WaitForRREP *>(msg))
-            handleWaitForRREP((WaitForRREP *) msg);
+        if (dynamic_cast<WaitForQoSRREP *>(msg))
+            handleWaitForQoSRREP((WaitForQoSRREP *) msg);
         else if (msg == helloMsgTimer)
             sendHelloMessagesIfNeeded();
         else if (msg == expungeTimer)
@@ -286,13 +286,16 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
         IRoute *route = routingTable->findBestMatchingRoute(destAddr);
         AODVQoSRouteData *routeData = route ? dynamic_cast<AODVQoSRouteData *>(route->getProtocolData()) : nullptr;
         bool isActive = routeData && routeData->isActive();
+
+        int tos = header->getDiffServCodePoint();
+        QoSRequirementsMapping::QoSRequirelemts* dataTypeRequirements= qosRequirements->determineQoSRequirements(tos);
+
         if (isActive && !route->getNextHopAsGeneric().isUnspecified())
         {
-            int tos = header->getDiffServCodePoint();
 
-            if(sourceAddr.isUnspecified())
+            if(header->getTransportProtocol()==IP_PROT_UDP && sourceAddr.isUnspecified())
             {
-
+                startQoSRouteDiscovery(destAddr,dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime(), route->getMetric());
             }
             EV_INFO << "Active route found: " << route << endl;
 
@@ -324,9 +327,9 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
                 // (e.g., upon route loss), the TTL in the RREQ IP header is initially
                 // set to the Hop Count plus TTL_INCREMENT.
                 if (isInactive)
-                startRouteDiscovery(destAddr, route->getMetric() + ttlIncrement);
+                startQoSRouteDiscovery(destAddr, dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime(),route->getMetric() + ttlIncrement);
                 else
-                startRouteDiscovery(destAddr);
+                startQoSRouteDiscovery(destAddr,dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime());
             }
             else
             EV_DETAIL << "Route discovery is in progress, originator " << getSelfIPAddress() << " target " << destAddr << endl;
@@ -340,18 +343,19 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
 
 AODVQoSRouting::AODVQoSRouting()
 {
+    qosRequirements = new QoSRequirementsMapping();
 }
 
 bool AODVQoSRouting::hasOngoingRouteDiscovery(const L3Address& target)
 {
-    return waitForRREPTimers.find(target) != waitForRREPTimers.end();
+    return waitForQoSRREPTimers.find(target) != waitForQoSRREPTimers.end();
 }
 
-void AODVQoSRouting::startRouteDiscovery(const L3Address& target, unsigned timeToLive)
+void AODVQoSRouting::startQoSRouteDiscovery(const L3Address& target, double minAvailableBandwidth, double minAvailableSlotTime, unsigned timeToLive)
 {
     EV_INFO << "Starting route discovery with originator " << getSelfIPAddress() << " and destination " << target << endl;
     ASSERT(!hasOngoingRouteDiscovery(target));
-    AODVQoSRREQ *rreq = createRREQ(target);
+    AODVQoSRREQ *rreq = createRREQ(target, minAvailableBandwidth, minAvailableSlotTime);
     addressToRreqRetries[target] = 0;
     sendRREQ(rreq, addressType->getBroadcastAddress(), timeToLive);
 }
@@ -388,9 +392,9 @@ void AODVQoSRouting::sendRREQ(AODVQoSRREQ *rreq, const L3Address& destAddr, unsi
         return;
     }
 
-    auto rrepTimer = waitForRREPTimers.find(rreq->getDestAddr());
-    WaitForRREP *rrepTimerMsg = nullptr;
-    if (rrepTimer != waitForRREPTimers.end())
+    auto rrepTimer = waitForQoSRREPTimers.find(rreq->getDestAddr());
+    WaitForQoSRREP *rrepTimerMsg = nullptr;
+    if (rrepTimer != waitForQoSRREPTimers.end())
     {
         rrepTimerMsg = rrepTimer->second;
         unsigned int lastTTL = rrepTimerMsg->getLastTTL();
@@ -427,14 +431,16 @@ void AODVQoSRouting::sendRREQ(AODVQoSRREQ *rreq, const L3Address& destAddr, unsi
     }
     else
     {
-        rrepTimerMsg = new WaitForRREP();
-        waitForRREPTimers[rreq->getDestAddr()] = rrepTimerMsg;
+        rrepTimerMsg = new WaitForQoSRREP();
+        waitForQoSRREPTimers[rreq->getDestAddr()] = rrepTimerMsg;
         ASSERT(hasOngoingRouteDiscovery(rreq->getDestAddr()));
 
         timeToLive = ttlStart;
         rrepTimerMsg->setLastTTL(ttlStart);
         rrepTimerMsg->setFromInvalidEntry(false);
         rrepTimerMsg->setDestAddr(rreq->getDestAddr());
+        rrepTimerMsg->setMinAvailableBandwidth(rreq->getMinAvailableBandwidth());
+        rrepTimerMsg->setMinAvailableSlotTime(rreq->getMinAvailableSlotTime());
     }
 
     // Each time, the timeout for receiving a RREP is RING_TRAVERSAL_TIME.
@@ -482,10 +488,11 @@ void AODVQoSRouting::sendRREP(AODVQoSRREP *rrep, const L3Address& destAddr, unsi
     sendAODVPacket(rrep, nextHop, timeToLive, 0);
 }
 
-AODVQoSRREQ *AODVQoSRouting::createRREQ(const L3Address& destAddr)
+AODVQoSRREQ *AODVQoSRouting::createRREQ(const L3Address& destAddr, double minAvailableBandwidth, double minAvailableSlotTime)
 {
     AODVQoSRREQ *rreqPacket = new AODVQoSRREQ("AODV-RREQ");
-
+    rreqPacket->setMinAvailableBandwidth(minAvailableBandwidth);
+    rreqPacket->setMinAvailableSlotTime(minAvailableSlotTime);
     rreqPacket->setGratuitousRREPFlag(askGratuitousRREP);
     IRoute *lastKnownRoute = routingTable->findBestMatchingRoute(destAddr);
 
@@ -1477,7 +1484,7 @@ void AODVQoSRouting::clearState()
 {
     rerrCount = rreqCount = rreqId = sequenceNum = 0;
     addressToRreqRetries.clear();
-    for (auto & elem : waitForRREPTimers)
+    for (auto & elem : waitForQoSRREPTimers)
         cancelAndDelete(elem.second);
 
     // FIXME: Drop the queued datagrams.
@@ -1486,7 +1493,7 @@ void AODVQoSRouting::clearState()
 
     targetAddressToDelayedPackets.clear();
 
-    waitForRREPTimers.clear();
+    waitForQoSRREPTimers.clear();
     rreqsArrivalTime.clear();
 
     if (useHelloMessages)
@@ -1501,7 +1508,7 @@ void AODVQoSRouting::clearState()
         cancelEvent(rrepAckTimer);
 }
 
-void AODVQoSRouting::handleWaitForRREP(WaitForRREP *rrepTimer)
+void AODVQoSRouting::handleWaitForQoSRREP(WaitForQoSRREP *rrepTimer)
 {
     EV_INFO << "We didn't get any Route Reply within RREP timeout" << endl;
     L3Address destAddr = rrepTimer->getDestAddr();
@@ -1514,7 +1521,7 @@ void AODVQoSRouting::handleWaitForRREP(WaitForRREP *rrepTimer)
         return;
     }
 
-    AODVQoSRREQ *rreq = createRREQ(destAddr);
+    AODVQoSRREQ *rreq = createRREQ(destAddr,rrepTimer->getMinAvailableBandwidth(),rrepTimer->getMinAvailableSlotTime());
 
     // the node MAY try again to discover a route by broadcasting another
     // RREQ, up to a maximum of RREQ_RETRIES times at the maximum TTL value.
@@ -1560,11 +1567,11 @@ void AODVQoSRouting::completeRouteDiscovery(const L3Address& target)
     // clear the multimap
     targetAddressToDelayedPackets.erase(lt, ut);
 
-    // we have a route for the destination, thus we must cancel the WaitForRREPTimer events
-    auto waitRREPIter = waitForRREPTimers.find(target);
-    ASSERT(waitRREPIter != waitForRREPTimers.end());
+    // we have a route for the destination, thus we must cancel the WaitForQoSRREPTimer events
+    auto waitRREPIter = waitForQoSRREPTimers.find(target);
+    ASSERT(waitRREPIter != waitForQoSRREPTimers.end());
     cancelAndDelete(waitRREPIter->second);
-    waitForRREPTimers.erase(waitRREPIter);
+    waitForQoSRREPTimers.erase(waitRREPIter);
 }
 
 void AODVQoSRouting::sendGRREP(AODVQoSRREP *grrep, const L3Address& destAddr, unsigned int timeToLive)
@@ -1703,14 +1710,12 @@ void AODVQoSRouting::expungeRoutes()
                     // before (current_time + 2 * NET_TRAVERSAL_TIME).
                     if (hasOngoingRouteDiscovery(route->getDestinationAsGeneric()))
                     {
-                        EV_DETAIL << "Route to " << route->getDestinationAsGeneric()
-                                << " expired and is inactive, but we are waiting for a RREP to this destination, so we extend its lifetime with 2 * NET_TRAVERSAL_TIME" << endl;
+                        EV_DETAIL << "Route to " << route->getDestinationAsGeneric() << " expired and is inactive, but we are waiting for a RREP to this destination, so we extend its lifetime with 2 * NET_TRAVERSAL_TIME" << endl;
                         routeData->setLifeTime(simTime() + 2 * netTraversalTime);
                     }
                     else
                     {
-                        EV_DETAIL << "Route to " << route->getDestinationAsGeneric() << " expired and is inactive and we are not expecting any RREP to this destination, so we delete this route"
-                                << endl;
+                        EV_DETAIL << "Route to " << route->getDestinationAsGeneric() << " expired and is inactive and we are not expecting any RREP to this destination, so we delete this route" << endl;
                         routingTable->deleteRoute(route);
                     }
                 }
@@ -1756,8 +1761,7 @@ void AODVQoSRouting::scheduleExpungeRoutes()
     }
 }
 
-INetfilter::IHook::Result AODVQoSRouting::datagramForwardHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry,
-        L3Address& nextHopAddress)
+INetfilter::IHook::Result AODVQoSRouting::datagramForwardHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress)
 {
     // TODO: Implement: Actions After Reboot
     // If the node receives a data packet for some other destination, it SHOULD
@@ -1870,10 +1874,10 @@ void AODVQoSRouting::cancelRouteDiscovery(const L3Address& destAddr)
 
     targetAddressToDelayedPackets.erase(lt, ut);
 
-    auto waitRREPIter = waitForRREPTimers.find(destAddr);
-    ASSERT(waitRREPIter != waitForRREPTimers.end());
+    auto waitRREPIter = waitForQoSRREPTimers.find(destAddr);
+    ASSERT(waitRREPIter != waitForQoSRREPTimers.end());
     cancelAndDelete(waitRREPIter->second);
-    waitForRREPTimers.erase(waitRREPIter);
+    waitForQoSRREPTimers.erase(waitRREPIter);
 }
 
 bool AODVQoSRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime)
@@ -1972,5 +1976,6 @@ AODVQoSRouting::~AODVQoSRouting()
     delete counterTimer;
     delete rrepAckTimer;
     delete blacklistTimer;
+    delete qosRequirements;
 }
 

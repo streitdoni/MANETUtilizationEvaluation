@@ -2294,24 +2294,26 @@ void *AODVQoSRREPACKDescriptor::getFieldStructValuePointer(void *object, int fie
     }
 }
 
-Register_Class(WaitForRREP)
+Register_Class(WaitForQoSRREP)
 
-WaitForRREP::WaitForRREP(const char *name, short kind) : ::omnetpp::cMessage(name,kind)
+WaitForQoSRREP::WaitForQoSRREP(const char *name, short kind) : ::omnetpp::cMessage(name,kind)
 {
     this->lastTTL = 0;
     this->fromInvalidEntry = false;
+    this->minAvailableBandwidth = 0;
+    this->minAvailableSlotTime = 0;
 }
 
-WaitForRREP::WaitForRREP(const WaitForRREP& other) : ::omnetpp::cMessage(other)
+WaitForQoSRREP::WaitForQoSRREP(const WaitForQoSRREP& other) : ::omnetpp::cMessage(other)
 {
     copy(other);
 }
 
-WaitForRREP::~WaitForRREP()
+WaitForQoSRREP::~WaitForQoSRREP()
 {
 }
 
-WaitForRREP& WaitForRREP::operator=(const WaitForRREP& other)
+WaitForQoSRREP& WaitForQoSRREP::operator=(const WaitForQoSRREP& other)
 {
     if (this==&other) return *this;
     ::omnetpp::cMessage::operator=(other);
@@ -2319,66 +2321,92 @@ WaitForRREP& WaitForRREP::operator=(const WaitForRREP& other)
     return *this;
 }
 
-void WaitForRREP::copy(const WaitForRREP& other)
+void WaitForQoSRREP::copy(const WaitForQoSRREP& other)
 {
     this->destAddr = other.destAddr;
     this->lastTTL = other.lastTTL;
     this->fromInvalidEntry = other.fromInvalidEntry;
+    this->minAvailableBandwidth = other.minAvailableBandwidth;
+    this->minAvailableSlotTime = other.minAvailableSlotTime;
 }
 
-void WaitForRREP::parsimPack(omnetpp::cCommBuffer *b) const
+void WaitForQoSRREP::parsimPack(omnetpp::cCommBuffer *b) const
 {
     ::omnetpp::cMessage::parsimPack(b);
     doParsimPacking(b,this->destAddr);
     doParsimPacking(b,this->lastTTL);
     doParsimPacking(b,this->fromInvalidEntry);
+    doParsimPacking(b,this->minAvailableBandwidth);
+    doParsimPacking(b,this->minAvailableSlotTime);
 }
 
-void WaitForRREP::parsimUnpack(omnetpp::cCommBuffer *b)
+void WaitForQoSRREP::parsimUnpack(omnetpp::cCommBuffer *b)
 {
     ::omnetpp::cMessage::parsimUnpack(b);
     doParsimUnpacking(b,this->destAddr);
     doParsimUnpacking(b,this->lastTTL);
     doParsimUnpacking(b,this->fromInvalidEntry);
+    doParsimUnpacking(b,this->minAvailableBandwidth);
+    doParsimUnpacking(b,this->minAvailableSlotTime);
 }
 
-L3Address& WaitForRREP::getDestAddr()
+L3Address& WaitForQoSRREP::getDestAddr()
 {
     return this->destAddr;
 }
 
-void WaitForRREP::setDestAddr(const L3Address& destAddr)
+void WaitForQoSRREP::setDestAddr(const L3Address& destAddr)
 {
     this->destAddr = destAddr;
 }
 
-unsigned int WaitForRREP::getLastTTL() const
+unsigned int WaitForQoSRREP::getLastTTL() const
 {
     return this->lastTTL;
 }
 
-void WaitForRREP::setLastTTL(unsigned int lastTTL)
+void WaitForQoSRREP::setLastTTL(unsigned int lastTTL)
 {
     this->lastTTL = lastTTL;
 }
 
-bool WaitForRREP::getFromInvalidEntry() const
+bool WaitForQoSRREP::getFromInvalidEntry() const
 {
     return this->fromInvalidEntry;
 }
 
-void WaitForRREP::setFromInvalidEntry(bool fromInvalidEntry)
+void WaitForQoSRREP::setFromInvalidEntry(bool fromInvalidEntry)
 {
     this->fromInvalidEntry = fromInvalidEntry;
 }
 
-class WaitForRREPDescriptor : public omnetpp::cClassDescriptor
+double WaitForQoSRREP::getMinAvailableBandwidth() const
+{
+    return this->minAvailableBandwidth;
+}
+
+void WaitForQoSRREP::setMinAvailableBandwidth(double minAvailableBandwidth)
+{
+    this->minAvailableBandwidth = minAvailableBandwidth;
+}
+
+double WaitForQoSRREP::getMinAvailableSlotTime() const
+{
+    return this->minAvailableSlotTime;
+}
+
+void WaitForQoSRREP::setMinAvailableSlotTime(double minAvailableSlotTime)
+{
+    this->minAvailableSlotTime = minAvailableSlotTime;
+}
+
+class WaitForQoSRREPDescriptor : public omnetpp::cClassDescriptor
 {
   private:
     mutable const char **propertynames;
   public:
-    WaitForRREPDescriptor();
-    virtual ~WaitForRREPDescriptor();
+    WaitForQoSRREPDescriptor();
+    virtual ~WaitForQoSRREPDescriptor();
 
     virtual bool doesSupport(omnetpp::cObject *obj) const override;
     virtual const char **getPropertyNames() const override;
@@ -2400,24 +2428,24 @@ class WaitForRREPDescriptor : public omnetpp::cClassDescriptor
     virtual void *getFieldStructValuePointer(void *object, int field, int i) const override;
 };
 
-Register_ClassDescriptor(WaitForRREPDescriptor)
+Register_ClassDescriptor(WaitForQoSRREPDescriptor)
 
-WaitForRREPDescriptor::WaitForRREPDescriptor() : omnetpp::cClassDescriptor("inet::WaitForRREP", "omnetpp::cMessage")
+WaitForQoSRREPDescriptor::WaitForQoSRREPDescriptor() : omnetpp::cClassDescriptor("inet::WaitForQoSRREP", "omnetpp::cMessage")
 {
     propertynames = nullptr;
 }
 
-WaitForRREPDescriptor::~WaitForRREPDescriptor()
+WaitForQoSRREPDescriptor::~WaitForQoSRREPDescriptor()
 {
     delete[] propertynames;
 }
 
-bool WaitForRREPDescriptor::doesSupport(omnetpp::cObject *obj) const
+bool WaitForQoSRREPDescriptor::doesSupport(omnetpp::cObject *obj) const
 {
-    return dynamic_cast<WaitForRREP *>(obj)!=nullptr;
+    return dynamic_cast<WaitForQoSRREP *>(obj)!=nullptr;
 }
 
-const char **WaitForRREPDescriptor::getPropertyNames() const
+const char **WaitForQoSRREPDescriptor::getPropertyNames() const
 {
     if (!propertynames) {
         static const char *names[] = {  nullptr };
@@ -2428,19 +2456,19 @@ const char **WaitForRREPDescriptor::getPropertyNames() const
     return propertynames;
 }
 
-const char *WaitForRREPDescriptor::getProperty(const char *propertyname) const
+const char *WaitForQoSRREPDescriptor::getProperty(const char *propertyname) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     return basedesc ? basedesc->getProperty(propertyname) : nullptr;
 }
 
-int WaitForRREPDescriptor::getFieldCount() const
+int WaitForQoSRREPDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 3+basedesc->getFieldCount() : 3;
+    return basedesc ? 5+basedesc->getFieldCount() : 5;
 }
 
-unsigned int WaitForRREPDescriptor::getFieldTypeFlags(int field) const
+unsigned int WaitForQoSRREPDescriptor::getFieldTypeFlags(int field) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2452,11 +2480,13 @@ unsigned int WaitForRREPDescriptor::getFieldTypeFlags(int field) const
         FD_ISCOMPOUND,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<3) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<5) ? fieldTypeFlags[field] : 0;
 }
 
-const char *WaitForRREPDescriptor::getFieldName(int field) const
+const char *WaitForQoSRREPDescriptor::getFieldName(int field) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2468,21 +2498,25 @@ const char *WaitForRREPDescriptor::getFieldName(int field) const
         "destAddr",
         "lastTTL",
         "fromInvalidEntry",
+        "minAvailableBandwidth",
+        "minAvailableSlotTime",
     };
-    return (field>=0 && field<3) ? fieldNames[field] : nullptr;
+    return (field>=0 && field<5) ? fieldNames[field] : nullptr;
 }
 
-int WaitForRREPDescriptor::findField(const char *fieldName) const
+int WaitForQoSRREPDescriptor::findField(const char *fieldName) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     int base = basedesc ? basedesc->getFieldCount() : 0;
     if (fieldName[0]=='d' && strcmp(fieldName, "destAddr")==0) return base+0;
     if (fieldName[0]=='l' && strcmp(fieldName, "lastTTL")==0) return base+1;
     if (fieldName[0]=='f' && strcmp(fieldName, "fromInvalidEntry")==0) return base+2;
+    if (fieldName[0]=='m' && strcmp(fieldName, "minAvailableBandwidth")==0) return base+3;
+    if (fieldName[0]=='m' && strcmp(fieldName, "minAvailableSlotTime")==0) return base+4;
     return basedesc ? basedesc->findField(fieldName) : -1;
 }
 
-const char *WaitForRREPDescriptor::getFieldTypeString(int field) const
+const char *WaitForQoSRREPDescriptor::getFieldTypeString(int field) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2494,11 +2528,13 @@ const char *WaitForRREPDescriptor::getFieldTypeString(int field) const
         "L3Address",
         "unsigned int",
         "bool",
+        "double",
+        "double",
     };
-    return (field>=0 && field<3) ? fieldTypeStrings[field] : nullptr;
+    return (field>=0 && field<5) ? fieldTypeStrings[field] : nullptr;
 }
 
-const char **WaitForRREPDescriptor::getFieldPropertyNames(int field) const
+const char **WaitForQoSRREPDescriptor::getFieldPropertyNames(int field) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2511,7 +2547,7 @@ const char **WaitForRREPDescriptor::getFieldPropertyNames(int field) const
     }
 }
 
-const char *WaitForRREPDescriptor::getFieldProperty(int field, const char *propertyname) const
+const char *WaitForQoSRREPDescriptor::getFieldProperty(int field, const char *propertyname) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2524,7 +2560,7 @@ const char *WaitForRREPDescriptor::getFieldProperty(int field, const char *prope
     }
 }
 
-int WaitForRREPDescriptor::getFieldArraySize(void *object, int field) const
+int WaitForQoSRREPDescriptor::getFieldArraySize(void *object, int field) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2532,13 +2568,13 @@ int WaitForRREPDescriptor::getFieldArraySize(void *object, int field) const
             return basedesc->getFieldArraySize(object, field);
         field -= basedesc->getFieldCount();
     }
-    WaitForRREP *pp = (WaitForRREP *)object; (void)pp;
+    WaitForQoSRREP *pp = (WaitForQoSRREP *)object; (void)pp;
     switch (field) {
         default: return 0;
     }
 }
 
-const char *WaitForRREPDescriptor::getFieldDynamicTypeString(void *object, int field, int i) const
+const char *WaitForQoSRREPDescriptor::getFieldDynamicTypeString(void *object, int field, int i) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2546,13 +2582,13 @@ const char *WaitForRREPDescriptor::getFieldDynamicTypeString(void *object, int f
             return basedesc->getFieldDynamicTypeString(object,field,i);
         field -= basedesc->getFieldCount();
     }
-    WaitForRREP *pp = (WaitForRREP *)object; (void)pp;
+    WaitForQoSRREP *pp = (WaitForQoSRREP *)object; (void)pp;
     switch (field) {
         default: return nullptr;
     }
 }
 
-std::string WaitForRREPDescriptor::getFieldValueAsString(void *object, int field, int i) const
+std::string WaitForQoSRREPDescriptor::getFieldValueAsString(void *object, int field, int i) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2560,16 +2596,18 @@ std::string WaitForRREPDescriptor::getFieldValueAsString(void *object, int field
             return basedesc->getFieldValueAsString(object,field,i);
         field -= basedesc->getFieldCount();
     }
-    WaitForRREP *pp = (WaitForRREP *)object; (void)pp;
+    WaitForQoSRREP *pp = (WaitForQoSRREP *)object; (void)pp;
     switch (field) {
         case 0: {std::stringstream out; out << pp->getDestAddr(); return out.str();}
         case 1: return ulong2string(pp->getLastTTL());
         case 2: return bool2string(pp->getFromInvalidEntry());
+        case 3: return double2string(pp->getMinAvailableBandwidth());
+        case 4: return double2string(pp->getMinAvailableSlotTime());
         default: return "";
     }
 }
 
-bool WaitForRREPDescriptor::setFieldValueAsString(void *object, int field, int i, const char *value) const
+bool WaitForQoSRREPDescriptor::setFieldValueAsString(void *object, int field, int i, const char *value) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2577,15 +2615,17 @@ bool WaitForRREPDescriptor::setFieldValueAsString(void *object, int field, int i
             return basedesc->setFieldValueAsString(object,field,i,value);
         field -= basedesc->getFieldCount();
     }
-    WaitForRREP *pp = (WaitForRREP *)object; (void)pp;
+    WaitForQoSRREP *pp = (WaitForQoSRREP *)object; (void)pp;
     switch (field) {
         case 1: pp->setLastTTL(string2ulong(value)); return true;
         case 2: pp->setFromInvalidEntry(string2bool(value)); return true;
+        case 3: pp->setMinAvailableBandwidth(string2double(value)); return true;
+        case 4: pp->setMinAvailableSlotTime(string2double(value)); return true;
         default: return false;
     }
 }
 
-const char *WaitForRREPDescriptor::getFieldStructName(int field) const
+const char *WaitForQoSRREPDescriptor::getFieldStructName(int field) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2599,7 +2639,7 @@ const char *WaitForRREPDescriptor::getFieldStructName(int field) const
     };
 }
 
-void *WaitForRREPDescriptor::getFieldStructValuePointer(void *object, int field, int i) const
+void *WaitForQoSRREPDescriptor::getFieldStructValuePointer(void *object, int field, int i) const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
     if (basedesc) {
@@ -2607,7 +2647,7 @@ void *WaitForRREPDescriptor::getFieldStructValuePointer(void *object, int field,
             return basedesc->getFieldStructValuePointer(object, field, i);
         field -= basedesc->getFieldCount();
     }
-    WaitForRREP *pp = (WaitForRREP *)object; (void)pp;
+    WaitForQoSRREP *pp = (WaitForQoSRREP *)object; (void)pp;
     switch (field) {
         case 0: return (void *)(&pp->getDestAddr()); break;
         default: return nullptr;

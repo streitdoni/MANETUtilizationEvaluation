@@ -109,9 +109,11 @@ class AODVQoSRREPACK extends AODVQoSControlPacket
 //
 // Represents a timer for a Route Reply packet
 //
-message WaitForRREP
+message WaitForQoSRREP
 {
     L3Address destAddr;
     unsigned int lastTTL;
     bool fromInvalidEntry;
+    double minAvailableBandwidth;
+    double minAvailableSlotTime;
 }
