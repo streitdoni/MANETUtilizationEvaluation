@@ -1,0 +1,1 @@
+./MANETRouteChoice -m -n .:../inetmanet-3.x-inetmanet-3.5/examples:../inetmanet-3.x-inetmanet-3.5/showcases:../inetmanet-3.x-inetmanet-3.5/src:../inetmanet-3.x-inetmanet-3.5/tutorials --image-path=../inetmanet-3.x-inetmanet-3.5/images -l ../inetmanet-3.x-inetmanet-3.5/src/INET omnetpp.ini -u Cmdenv -c AODVNetwork
