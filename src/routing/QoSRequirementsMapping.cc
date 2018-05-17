@@ -17,7 +17,7 @@
 
 QoSRequirementsMapping::QoSRequirementsMapping()
 {
-    // TODO Auto-generated constructor stub
+    requirements = new QoSRequirementsMapping::QoSRequirelemts();
 
 }
 
@@ -26,3 +26,19 @@ QoSRequirementsMapping::~QoSRequirementsMapping()
     // TODO Auto-generated destructor stub
 }
 
+QoSRequirementsMapping::QoSRequirelemts* QoSRequirementsMapping::determineQoSRequirements(int tos)
+{
+    if (tos > 0 && tos < 32)
+    {
+        requirements->setMaxDelay(4000);
+        requirements->setMinBandwidth(800);
+        requirements->setMinSlotTime(30);
+    }
+    else if (tos > 32 && tos < 64)
+    {
+        requirements->setMaxDelay(150);
+        requirements->setMinBandwidth(80);
+        requirements->setMinSlotTime(25);
+    }
+    return requirements;
+}

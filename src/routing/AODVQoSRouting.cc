@@ -277,7 +277,9 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
     }
 
     if (destAddr.isBroadcast() || routingTable->isLocalAddress(destAddr) || destAddr.isMulticast())
-    return ACCEPT;
+    {
+        return ACCEPT;
+    }
     else
     {
         EV_INFO << "Finding route for source " << sourceAddr << " with destination " << destAddr << endl;
@@ -286,6 +288,12 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
         bool isActive = routeData && routeData->isActive();
         if (isActive && !route->getNextHopAsGeneric().isUnspecified())
         {
+            int tos = header->getDiffServCodePoint();
+
+            if(sourceAddr.isUnspecified())
+            {
+
+            }
             EV_INFO << "Active route found: " << route << endl;
 
             // Each time a route is used to forward a data packet, its Active Route
@@ -553,10 +561,10 @@ AODVQoSRREP *AODVQoSRouting::createRREP(AODVQoSRREQ *rreq, IRoute *destRoute, IR
     // (see section 6.6.2).
 
     if (rreq->getDestAddr() == getSelfIPAddress())
-    {    // node is itself the requested destination
-         // If the generating node is the destination itself, it MUST increment
-         // its own sequence number by one if the sequence number in the RREQ
-         // packet is equal to that incremented value.
+    { // node is itself the requested destination
+      // If the generating node is the destination itself, it MUST increment
+      // its own sequence number by one if the sequence number in the RREQ
+      // packet is equal to that incremented value.
 
         if (!rreq->getUnknownSeqNumFlag() && sequenceNum + 1 == rreq->getDestSeqNum())
             sequenceNum++;
@@ -742,7 +750,7 @@ void AODVQoSRouting::handleRREP(AODVQoSRREP *rrep, const L3Address& sourceAddr)
         }
     }
     else
-    {    // create forward route for the destination: this path will be used by the originator to send data packets
+    { // create forward route for the destination: this path will be used by the originator to send data packets
         destRoute = createRoute(rrep->getDestAddr(), sourceAddr, newHopCount, true, destSeqNum, true, simTime() + lifeTime);
         destRouteData = check_and_cast<AODVQoSRouteData *>(destRoute->getProtocolData());
     }
@@ -967,7 +975,7 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
         AODVQoSRouteData *routeData = check_and_cast<AODVQoSRouteData *>(reverseRoute->getProtocolData());
         int routeSeqNum = routeData->getDestSeqNum();
         int newSeqNum = std::max(routeSeqNum, rreqSeqNum);
-        int newHopCount = rreq->getHopCount();    // Note: already incremented by 1.
+        int newHopCount = rreq->getHopCount(); // Note: already incremented by 1.
         int routeHopCount = reverseRoute->getMetric();
         // The route is only updated if the new sequence number is either
         //
@@ -1003,7 +1011,8 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
     // gratuitous RREP to the destination node.
 
     IRoute *destRoute = routingTable->findBestMatchingRoute(rreq->getDestAddr());
-    AODVQoSRouteData *destRouteData = destRoute ? dynamic_cast<AODVQoSRouteData *>(destRoute->getProtocolData()) : nullptr;
+    AODVQoSRouteData *destRouteData = destRoute ? dynamic_cast<AODVQoSRouteData *>(destRoute->getProtocolData()) :
+    nullptr;
 
     // check (i)
     if (rreq->getDestAddr() == getSelfIPAddress())
@@ -1102,7 +1111,7 @@ IRoute *AODVQoSRouting::createRoute(const L3Address& destAddr, const L3Address& 
     newProtocolData->setLifeTime(lifeTime);
     newProtocolData->setDestSeqNum(destSeqNum);
 
-    InterfaceEntry *ifEntry = interfaceTable->getInterfaceByName("wlan0");    // TODO: IMPLEMENT: multiple interfaces
+    InterfaceEntry *ifEntry = interfaceTable->getInterfaceByName("wlan0"); // TODO: IMPLEMENT: multiple interfaces
     if (ifEntry)
         newRoute->setInterface(ifEntry);
 
@@ -1389,7 +1398,7 @@ void AODVQoSRouting::handleRERR(AODVQoSRERR *rerr, const L3Address& sourceAddr)
                     // ! and copied from the incoming RERR in case (iii) above.
 
                     routeData->setDestSeqNum(rerr->getUnreachableNodes(j).seqNum);
-                    routeData->setIsActive(false);                    // it means invalid, see 3. AODV Terminology p.3. in RFC 3561
+                    routeData->setIsActive(false); // it means invalid, see 3. AODV Terminology p.3. in RFC 3561
                     routeData->setLifeTime(simTime() + deletePeriod);
 
                     // The RERR should contain those destinations that are part of
@@ -1509,7 +1518,7 @@ void AODVQoSRouting::handleWaitForRREP(WaitForRREP *rrepTimer)
 
     // the node MAY try again to discover a route by broadcasting another
     // RREQ, up to a maximum of RREQ_RETRIES times at the maximum TTL value.
-    if (rrepTimer->getLastTTL() == netDiameter)    // netDiameter is the maximum TTL value
+    if (rrepTimer->getLastTTL() == netDiameter) // netDiameter is the maximum TTL value
         addressToRreqRetries[destAddr]++;
 
     sendRREQ(rreq, addressType->getBroadcastAddress(), 0);
@@ -1835,7 +1844,8 @@ void AODVQoSRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAd
     node.addr = unreachableAddr;
 
     IRoute *unreachableRoute = routingTable->findBestMatchingRoute(unreachableAddr);
-    AODVQoSRouteData *unreachableRouteData = unreachableRoute ? dynamic_cast<AODVQoSRouteData *>(unreachableRoute->getProtocolData()) : nullptr;
+    AODVQoSRouteData *unreachableRouteData = unreachableRoute ? dynamic_cast<AODVQoSRouteData *>(unreachableRoute->getProtocolData()) :
+    nullptr;
 
     if (unreachableRouteData && unreachableRouteData->hasValidDestNum())
         node.seqNum = unreachableRouteData->getDestSeqNum();
@@ -1847,7 +1857,7 @@ void AODVQoSRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAd
 
     rerrCount++;
     EV_INFO << "Broadcasting Route Error message with TTL=1" << endl;
-    sendAODVPacket(rerr, addressType->getBroadcastAddress(), 1, jitterPar->doubleValue());    // TODO: unicast if there exists a route to the source
+    sendAODVPacket(rerr, addressType->getBroadcastAddress(), 1, jitterPar->doubleValue()); // TODO: unicast if there exists a route to the source
 }
 
 void AODVQoSRouting::cancelRouteDiscovery(const L3Address& destAddr)
