@@ -62,7 +62,7 @@ network Network
                 script = default(xml("<scenario/>"));
                 @display("p=50,250");
         }
-        host[numHosts]: AODVRouter {
+        host[numHosts]: AODVQoSRouter {
             parameters:
                 @display("p=100,100;r=,,#000040");
         }

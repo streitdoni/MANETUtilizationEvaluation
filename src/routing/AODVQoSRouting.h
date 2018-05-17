@@ -42,7 +42,7 @@ using namespace physicallayer;
  * in the IP-layer required by this protocol.
  */
 
-class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public INetfilter::IHook, public cListener
+class AODVQoSRouting : public cSimpleModule, public ILifecycle, public INetfilter::IHook, public cListener
 {
     protected:
         /*
@@ -157,7 +157,7 @@ class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public 
             BUSY, FREE, UNDEFINED
         };
 
-        struct oldRadioBehavior
+        struct OldRadioBehavior
         {
                 RadioBehavior behavior;
                 simtime_t time;
@@ -166,6 +166,11 @@ class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public 
         std::map<RadioBehavior, std::vector<TransmissionTimeAllocation>> radioBehaviorTimeAllocation;
         std::map<Path, std::vector<TransmissionOverHead>> currentTransmissions;
         QoSRequirementsMapping* qosRequirements = nullptr;
+
+        enum RREQTreatment
+        {
+            UNKNOWN, FORWARD, DELETE, DELAY
+        };
 
     protected:
         void handleMessage(cMessage *msg) override;
@@ -193,6 +198,7 @@ class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public 
         void defineBandwidthOverhead(std::vector<TransmissionOverHead>& transmissionOverhead, double timeSpan);
         void defineRadioBehaviorLoad(std::vector<TransmissionTimeAllocation>&transmissionRadioLoad, double timeSpan);
         double* determineUtilization();
+        double determineQoSRREQTreatment(double* transmissionPossibilities, double requiredBandwidth, double requiredSlotTime);
         /* Control packet creators */
         AODVQoSRREPACK *createRREPACK();
         AODVQoSRREP *createHelloMessage();
@@ -216,7 +222,7 @@ class INET_API AODVQoSRouting : public cSimpleModule, public ILifecycle, public 
 
         /* Control Packet forwarders */
         void forwardRREP(AODVQoSRREP *rrep, const L3Address& destAddr, unsigned int timeToLive);
-        void forwardRREQ(AODVQoSRREQ *rreq, unsigned int timeToLive);
+        void forwardRREQ(AODVQoSRREQ *rreq, unsigned int timeToLive, double delay = 0);
 
         /* Self message handlers */
         void handleRREPACKTimer();

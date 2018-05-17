@@ -199,6 +199,55 @@ void AODVQoSRouting::handleMessage(cMessage *msg)
     }
 }
 
+double AODVQoSRouting::determineQoSRREQTreatment(double* transmissionPossibilities, double requiredBandwidth, double requiredSlotTime)
+{
+    RREQTreatment bandwidthTreatment = RREQTreatment::UNKNOWN;
+    RREQTreatment slotTimeTreatment = RREQTreatment::UNKNOWN;
+
+    double availableBandwidth = transmissionPossibilities[0];
+    double availableSlotTime = transmissionPossibilities[1];
+
+    if (availableBandwidth - requiredBandwidth < 100)
+    {
+        bandwidthTreatment = RREQTreatment::DELETE;
+    }
+    else if (availableBandwidth - requiredBandwidth > 500)
+    {
+        bandwidthTreatment = RREQTreatment::FORWARD;
+    }
+    else
+    {
+        bandwidthTreatment = RREQTreatment::DELAY;
+    }
+
+    if (availableSlotTime - requiredSlotTime < 100)
+    {
+        slotTimeTreatment = RREQTreatment::DELETE;
+    }
+    else if (availableSlotTime - requiredSlotTime > 500)
+    {
+        slotTimeTreatment = RREQTreatment::FORWARD;
+    }
+    else
+    {
+        slotTimeTreatment = RREQTreatment::DELAY;
+    }
+
+    std::pair<RREQTreatment, simtime_t> treatment;
+    if (slotTimeTreatment == RREQTreatment::DELETE || bandwidthTreatment == RREQTreatment::DELETE)
+    {
+        return -1;
+    }
+    else if (slotTimeTreatment == RREQTreatment::DELAY || bandwidthTreatment == RREQTreatment::DELAY)
+    {
+        return 0;
+    }
+    else
+    {
+        return 0.5;
+    }
+}
+
 double* AODVQoSRouting::determineUtilization()
 {
     static double utilization[2];
@@ -239,7 +288,7 @@ double* AODVQoSRouting::determineUtilization()
             }
         }
     }
-    utilization[1] = 1 - busyTime;
+    utilization[1] = (1000 - busyTime);
 
     return utilization;
 }
@@ -339,16 +388,16 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
 
             /*NEXT STEP*/
             /*Node starts another flow*/
-            // if(header->getTransportProtocol()==IP_PROT_UDP && sourceAddr.isUnspecified())
-            // {
-            //  startQoSRouteDiscovery(destAddr,dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime(), route->getMetric());
-            // }
+// if(header->getTransportProtocol()==IP_PROT_UDP && sourceAddr.isUnspecified())
+// {
+//  startQoSRouteDiscovery(destAddr,dataTypeRequirements->getMinBandwidth(),dataTypeRequirements->getMinSlotTime(), route->getMetric());
+// }
             EV_INFO << "Active route found: " << route << endl;
 
-            // Each time a route is used to forward a data packet, its Active Route
-            // Lifetime field of the source, destination and the next hop on the
-            // path to the destination is updated to be no less than the current
-            // time plus ACTIVE_ROUTE_TIMEOUT.
+// Each time a route is used to forward a data packet, its Active Route
+// Lifetime field of the source, destination and the next hop on the
+// path to the destination is updated to be no less than the current
+// time plus ACTIVE_ROUTE_TIMEOUT.
 
             updateValidRouteLifeTime(destAddr, simTime() + activeRouteTimeout);
             updateValidRouteLifeTime(route->getNextHopAsGeneric(), simTime() + activeRouteTimeout);
@@ -358,10 +407,10 @@ INetfilter::IHook::Result AODVQoSRouting::ensureRouteForDatagram(INetworkDatagra
         else if (sourceAddr.isUnspecified() || routingTable->isLocalAddress(sourceAddr))
         {
             bool isInactive = routeData && !routeData->isActive();
-            // A node disseminates a RREQ when it determines that it needs a route
-            // to a destination and does not have one available.  This can happen if
-            // the destination is previously unknown to the node, or if a previously
-            // valid route to the destination expires or is marked as invalid.
+// A node disseminates a RREQ when it determines that it needs a route
+// to a destination and does not have one available.  This can happen if
+// the destination is previously unknown to the node, or if a previously
+// valid route to the destination expires or is marked as invalid.
 
             EV_INFO << (isInactive ? "Inactive" : "Missing") << " route for destination " << destAddr << endl;
 
@@ -1050,6 +1099,13 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
     /******************QoS-Extended**********************/
     /****************************************************/
     double* utilization = determineUtilization();
+    double result = determineQoSRREQTreatment(utilization, rreq->getMinAvailableBandwidth(), rreq->getMinAvailableSlotTime());
+
+    if (result == -1)
+    {
+        delete rreq;
+        return;
+    }
     // A node generates a RREP if either:
     //
     // (i)       it is itself the destination, or
@@ -1140,7 +1196,7 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
         rreq->setUnknownSeqNumFlag(false);
 
         AODVQoSRREQ *outgoingRREQ = rreq->dup();
-        forwardRREQ(outgoingRREQ, timeToLive);
+        forwardRREQ(outgoingRREQ, timeToLive, result);
     }
     else
         EV_WARN << "Can't forward the RREQ because of its small (<= 1) TTL: " << timeToLive << " or the AODV reboot has not completed yet" << endl;
@@ -1589,7 +1645,7 @@ void AODVQoSRouting::forwardRREP(AODVQoSRREP *rrep, const L3Address& destAddr, u
     sendAODVPacket(rrep, destAddr, 100, jitterPar->doubleValue());
 }
 
-void AODVQoSRouting::forwardRREQ(AODVQoSRREQ *rreq, unsigned int timeToLive)
+void AODVQoSRouting::forwardRREQ(AODVQoSRREQ *rreq, unsigned int timeToLive, double delay)
 {
     EV_INFO << "Forwarding the Route Request message with TTL= " << timeToLive << endl;
     sendAODVPacket(rreq, addressType->getBroadcastAddress(), timeToLive, jitterPar->doubleValue());
