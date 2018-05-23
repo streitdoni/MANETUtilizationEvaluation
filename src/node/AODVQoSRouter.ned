@@ -44,7 +44,7 @@ module AODVQoSRouter extends WirelessHost
         @display("i=device/cellphone");
         forwarding = true;
         wlan[*].mgmtType = default("Ieee80211MgmtAdhoc");
-        int recordTime = default(1); // time to record network traffic of node
+        
     submodules:
         aodvQoS: AODVQoSRouting {
             @display("p=558,307");

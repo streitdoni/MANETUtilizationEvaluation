@@ -2,11 +2,12 @@
 # OMNeT++/OMNEST Makefile for UtilizationEvaluation
 #
 # This file was generated with the command:
-#  opp_makemake -f --deep -O out -KINETMANET_3_0_PROJ=/home/klement/Git/inetmanet-3.x -DINET_IMPORT -I. -I$$\(INETMANET_3_0_PROJ\)/src -L$$\(INETMANET_3_0_PROJ\)/out/$$\(CONFIGNAME\)/src -lINET
+#  opp_makemake -f --deep -O out -KINETMANET_3_0_PROJ=/home/klement/Repositories/Simulations/Framworks/inetmanet-3.x -DINET_IMPORT -I. -I$$\(INETMANET_3_0_PROJ\)/src -L$$\(INETMANET_3_0_PROJ\)/src -lINET$$\(D\)
 #
 
 # Name of target to be created (-o option)
-TARGET = UtilizationEvaluation$(EXE_SUFFIX)
+TARGET = UtilizationEvaluation$(D)$(EXE_SUFFIX)
+TARGET_DIR = .
 
 # User interface (uncomment one) (-u option)
 USERIF_LIBS = $(ALL_ENV_LIBS) # that is, $(TKENV_LIBS) $(QTENV_LIBS) $(CMDENV_LIBS)
@@ -21,7 +22,7 @@ INCLUDE_PATH = -I. -I$(INETMANET_3_0_PROJ)/src
 EXTRA_OBJS =
 
 # Additional libraries (-L, -l options)
-LIBS = $(LDFLAG_LIBPATH)$(INETMANET_3_0_PROJ)/out/$(CONFIGNAME)/src  -lINET
+LIBS = $(LDFLAG_LIBPATH)$(INETMANET_3_0_PROJ)/src  -lINET$(D)
 
 # Output directory
 PROJECT_OUTPUT_DIR = out
@@ -39,7 +40,7 @@ MSGFILES = \
 SMFILES =
 
 # Other makefile variables (-K)
-INETMANET_3_0_PROJ=/home/klement/Git/inetmanet-3.x
+INETMANET_3_0_PROJ=/home/klement/Repositories/Simulations/Framworks/inetmanet-3.x
 
 #------------------------------------------------------------------------------
 
@@ -64,7 +65,7 @@ include $(CONFIGFILE)
 # Simulation kernel and user interface libraries
 OMNETPP_LIBS = $(OPPMAIN_LIB) $(USERIF_LIBS) $(KERNEL_LIBS) $(SYS_LIBS)
 ifneq ($(TOOLCHAIN_NAME),clangc2)
-LIBS += -Wl,-rpath,$(abspath $(INETMANET_3_0_PROJ)/out/$(CONFIGNAME)/src)
+LIBS += -Wl,-rpath,$(abspath $(INETMANET_3_0_PROJ)/src)
 endif
 
 COPTS = $(CFLAGS) $(IMPORT_DEFINES) -DINET_IMPORT $(INCLUDE_PATH) -I$(OMNETPP_INCL_DIR)
@@ -86,8 +87,14 @@ endif
 #------------------------------------------------------------------------------
 
 # Main target
-all: $O/$(TARGET)
-	$(Q)$(LN) $O/$(TARGET) .
+all: $(TARGET_DIR)/$(TARGET)
+
+$(TARGET_DIR)/% :: $O/%
+	@mkdir -p $(TARGET_DIR)
+	$(Q)$(LN) $< $@
+ifeq ($(TOOLCHAIN_NAME),clangc2)
+	$(Q)-$(LN) $(<:%.dll=%.lib) $(@:%.dll=%.lib)
+endif
 
 $O/$(TARGET): $(OBJS)  $(wildcard $(EXTRA_OBJS)) Makefile $(CONFIGFILE)
 	@$(MKPATH) $O
@@ -105,7 +112,7 @@ $O/%.o: %.cc $(COPTS_FILE) | msgheaders smheaders
 
 %_m.cc %_m.h: %.msg
 	$(qecho) MSGC: $<
-	$(Q)$(MSGC) -s _m.cc $(MSGCOPTS) $?
+	$(Q)$(MSGC) -s _m.cc -MD -MP -MF $O/$(basename $@).d $(MSGCOPTS) $?
 
 %_sm.cc %_sm.h: %.sm
 	$(qecho) SMC: $<
@@ -116,12 +123,15 @@ msgheaders: $(MSGFILES:.msg=_m.h)
 smheaders: $(SMFILES:.sm=_sm.h)
 
 clean:
-	$(qecho) Cleaning...
+	$(qecho) Cleaning $(TARGET)
 	$(Q)-rm -rf $O
-	$(Q)-rm -f $(TARGET)
+	$(Q)-rm -f $(TARGET_DIR)/$(TARGET)
+	$(Q)-rm -f $(TARGET_DIR)/$(TARGET:%.dll=%.lib)
 	$(Q)-rm -f $(call opp_rwildcard, . , *_m.cc *_m.h *_sm.cc *_sm.h)
 
-cleanall: clean
+cleanall:
+	$(Q)$(MAKE) -s clean MODE=release
+	$(Q)$(MAKE) -s clean MODE=debug
 	$(Q)-rm -rf $(PROJECT_OUTPUT_DIR)
 
 # include all dependencies

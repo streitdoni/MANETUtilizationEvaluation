@@ -37,6 +37,7 @@ package src.routing;
 simple AODVQoSRouting
 {
     parameters:
+        int recordTime = default(1); // time to record network traffic of node
         @display("i=block/network2");
         string routingTableModule = default("^.routingTable");
         string interfaceTableModule = default("^.interfaceTable");
