@@ -140,7 +140,7 @@ class AODVQoSRouting : public cSimpleModule, public ILifecycle, public INetfilte
         std::multimap<L3Address, INetworkDatagram *> targetAddressToDelayedPackets; // queue for the datagrams we have no route for
 
         /*QoS Params*/
-        int recordTime;
+        double recordTime;
         typedef std::pair<L3Address, L3Address> Path;
 
         struct TransmissionOverHead

@@ -1126,8 +1126,7 @@ void AODVQoSRouting::handleRREQ(AODVQoSRREQ *rreq, const L3Address& sourceAddr, 
     // node returns a RREP to the originating node, it MUST also unicast a
     // gratuitous RREP to the destination node.
     IRoute *destRoute = routingTable->findBestMatchingRoute(rreq->getDestAddr());
-    AODVQoSRouteData *destRouteData = destRoute ? dynamic_cast<AODVQoSRouteData *>(destRoute->getProtocolData()) :
-    nullptr;
+    AODVQoSRouteData *destRouteData = destRoute ? dynamic_cast<AODVQoSRouteData *>(destRoute->getProtocolData()) : nullptr;
 
     // check (i)
     if (rreq->getDestAddr() == getSelfIPAddress())
@@ -1289,7 +1288,7 @@ void AODVQoSRouting::receiveSignal(cComponent *source, simsignal_t signalID, lon
         oldTimeAllocation.time = simTime();
         oldTimeAllocation.behavior = behavior;
     }
-
+    std::cout << oldTimeAllocation.time << "asd" << oldTimeAllocation.time.dbl() << endl;
     TransmissionTimeAllocation currentTimeAllocation { (simTime() - oldTimeAllocation.time).dbl(), simTime() };
 
     std::map<RadioBehavior, std::vector<TransmissionTimeAllocation>>::iterator tmpTimeAllocation = radioBehaviorTimeAllocation.find(oldTimeAllocation.behavior);
@@ -1298,15 +1297,14 @@ void AODVQoSRouting::receiveSignal(cComponent *source, simsignal_t signalID, lon
     {
         std::vector<TransmissionTimeAllocation> transmissionTime;
         transmissionTime.push_back(currentTimeAllocation);
-        radioBehaviorTimeAllocation[oldTimeAllocation.behavior] = transmissionTime;
+        tmpTimeAllocation = radioBehaviorTimeAllocation.insert(std::pair<RadioBehavior, std::vector<TransmissionTimeAllocation>>(oldTimeAllocation.behavior, transmissionTime)).first;
     }
     else
     {
         tmpTimeAllocation->second.push_back(currentTimeAllocation);
     }
-    std::cout << tmpTimeAllocation->second.size() << endl;
+
     defineRadioBehaviorLoad(tmpTimeAllocation->second);
-    std::cout << tmpTimeAllocation->second.size() << endl;
     oldTimeAllocation.time = simTime();
     oldTimeAllocation.behavior = behavior;
 
@@ -1956,8 +1954,7 @@ void AODVQoSRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAd
     node.addr = unreachableAddr;
 
     IRoute *unreachableRoute = routingTable->findBestMatchingRoute(unreachableAddr);
-    AODVQoSRouteData *unreachableRouteData = unreachableRoute ? dynamic_cast<AODVQoSRouteData *>(unreachableRoute->getProtocolData()) :
-    nullptr;
+    AODVQoSRouteData *unreachableRouteData = unreachableRoute ? dynamic_cast<AODVQoSRouteData *>(unreachableRoute->getProtocolData()) : nullptr;
 
     if (unreachableRouteData && unreachableRouteData->hasValidDestNum())
         node.seqNum = unreachableRouteData->getDestSeqNum();
